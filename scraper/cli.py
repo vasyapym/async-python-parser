@@ -21,14 +21,14 @@ from .transport import build_fetcher
 def _positive_int(value: str) -> int:
     parsed = int(value)
     if parsed <= 0:
-        raise argparse.ArgumentTypeError("must be greater than zero")
+        raise argparse.ArgumentTypeError("значение должно быть больше нуля")
     return parsed
 
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="luna-scraper",
-        description="Respectful async procurement and product scraper",
+        description="Уважительный асинхронный сборщик публичных закупок и карточек товаров",
     )
     parser.add_argument("--database-url", default=os.getenv("DATABASE_URL"))
     parser.add_argument("--transport", choices=("auto", "httpx", "playwright"), default=None)
@@ -40,20 +40,20 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--jitter", type=float, default=None)
 
     commands = parser.add_subparsers(dest="command", required=True)
-    init_db = commands.add_parser("init-db", help="create PostgreSQL tables")
+    init_db = commands.add_parser("init-db", help="создать таблицы PostgreSQL")
     init_db.set_defaults(command="init-db")
 
-    run = commands.add_parser("run", help="discover and persist source records")
+    run = commands.add_parser("run", help="найти записи источника и сохранить результат")
     run.add_argument("--source", choices=("zakupki", "fourglaza", "all"), default="all")
     run.add_argument(
         "--published-after",
-        help="UTC/ISO or DD.MM.YYYY date; first-run cursor for sources that expose dates",
+        help="дата UTC/ISO или ДД.ММ.ГГГГ; начальная дата для источников с курсором публикации",
     )
     run.add_argument("--limit", type=_positive_int, default=None)
     run.add_argument(
         "--full",
         action="store_true",
-        help="ignore the saved checkpoint; IDs still remain idempotent",
+        help="игнорировать сохранённую контрольную точку; идентификаторы остаются идемпотентными",
     )
     return parser
 
@@ -63,7 +63,7 @@ def _settings(args: argparse.Namespace) -> Settings:
         "database_url": args.database_url,
     }
     if not values["database_url"]:
-        raise ValueError("DATABASE_URL is required; pass --database-url or export DATABASE_URL")
+        raise ValueError("требуется DATABASE_URL; передайте --database-url или экспортируйте DATABASE_URL")
     settings = Settings.from_env(database_url=values["database_url"])
     overrides: Dict[str, Any] = {}
     for name in (
@@ -87,7 +87,7 @@ def _parse_since(value: Optional[str]) -> Optional[Any]:
         return None
     parsed = parse_datetime(value)
     if parsed is None:
-        raise ValueError("could not parse --published-after: " + value)
+        raise ValueError("не удалось разобрать --published-after: " + value)
     return parsed
 
 
@@ -111,7 +111,7 @@ async def _run_command(args: argparse.Namespace) -> int:
     await repository.initialize()
     if args.command == "init-db":
         await repository.close()
-        print("PostgreSQL schema is ready")
+        print("Схема PostgreSQL готова")
         return 0
 
     since = _parse_since(args.published_after)
@@ -172,8 +172,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     try:
         return asyncio.run(_run_command(args))
     except KeyboardInterrupt:
-        print("Interrupted", file=sys.stderr)
+        print("Выполнение прервано", file=sys.stderr)
         return 130
     except Exception as error:
-        print("scraper error: " + str(error), file=sys.stderr)
+        print("ошибка парсера: " + str(error), file=sys.stderr)
         return 2
